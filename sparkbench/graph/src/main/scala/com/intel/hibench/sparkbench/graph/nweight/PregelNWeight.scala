@@ -17,7 +17,7 @@
 
 package com.intel.hibench.sparkbench.graph.nweight
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import org.apache.spark.SparkContext
 import org.apache.spark.HashPartitioner
 import org.apache.spark.storage.StorageLevel
@@ -53,6 +53,7 @@ object PregelNWeight extends Serializable{
   def mergMsg(c1: Long2DoubleOpenHashMap, c2: Long2DoubleOpenHashMap) = {
     c2.long2DoubleEntrySet()
       .fastIterator()
+      .asScala
       .foreach(pair =>
         c1.put(pair.getLongKey(), c1.get(pair.getLongKey()) + pair.getDoubleValue()))
     c1
@@ -61,7 +62,7 @@ object PregelNWeight extends Serializable{
   def vProg(id: VertexId, vdata: SizedPriorityQueue, msg: Long2DoubleOpenHashMap) = {
     vdata.clear()
     if (msg.size > 0) {
-      msg.long2DoubleEntrySet().fastIterator().foreach { pair =>
+      msg.long2DoubleEntrySet().fastIterator().asScala.foreach { pair =>
         val src = pair.getLongKey()
         val wn = pair.getDoubleValue()
         vdata.enqueue((src, wn))

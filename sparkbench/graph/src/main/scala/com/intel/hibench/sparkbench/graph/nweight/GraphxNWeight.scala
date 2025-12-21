@@ -17,7 +17,7 @@
 
 package com.intel.hibench.sparkbench.graph.nweight
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import org.apache.spark.SparkContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.HashPartitioner
@@ -49,6 +49,7 @@ object GraphxNWeight extends Serializable{
   def reduceF(c1: Long2DoubleOpenHashMap, c2: Long2DoubleOpenHashMap) = {
     c2.long2DoubleEntrySet()
       .fastIterator()
+      .asScala
       .foreach(pair => c1.put(pair.getLongKey(), c1.get(pair.getLongKey()) + pair.getDoubleValue()))
     c1
   }
@@ -57,7 +58,7 @@ object GraphxNWeight extends Serializable{
     vdata.clear()
     val weightMap = msg.orNull
     if (weightMap != null) {
-      weightMap.long2DoubleEntrySet().fastIterator().foreach { pair =>
+      weightMap.long2DoubleEntrySet().fastIterator().asScala.foreach { pair =>
         val src = pair.getLongKey()
         val wn = pair.getDoubleValue()
         vdata.enqueue((src, wn))

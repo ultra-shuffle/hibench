@@ -27,7 +27,7 @@ import org.apache.hadoop.mapred.SequenceFileOutputFormat
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkException}
 
-import scala.collection.JavaConversions._
+import scala.jdk.CollectionConverters._
 import scala.collection.mutable.HashMap
 import scala.reflect.ClassTag
 import scala.reflect.runtime.universe.TypeTag
@@ -102,7 +102,9 @@ object IOCommon {
          val properties = new Properties()
          properties.load(inReader)
          result ++= properties.stringPropertyNames()
-           .map(k => (k, properties(k).trim)).toMap
+           .asScala
+           .map(k => (k, properties.getProperty(k).trim))
+           .toMap
        } catch {
          case e: IOException =>
            val message = s"Failed when loading Sparkbench properties file $file"
