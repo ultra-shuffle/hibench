@@ -26,6 +26,7 @@
       <groupId>org.apache.hadoop</groupId>
       <artifactId>hadoop-common</artifactId>
       <version>${hadoop.mr2.version}</version>
+      <scope>provided</scope>
     </dependency>
   </dependencies>
 </project>
