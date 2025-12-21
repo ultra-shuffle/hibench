@@ -4,9 +4,9 @@
  
  * `bc` is required to generate the HiBench report.
 
- * Supported Hadoop version: Apache Hadoop 2.x, CDH5.x, HDP
+ * Supported Hadoop version: Apache Hadoop 2.x / 3.x, CDH5.x, HDP
 
- * Supported Spark version: 1.6.x, 2.0.x, 2.1.x, 2.2.x
+ * Supported Spark version: 1.6.x, 2.x, 3.5.x
 
  * Build HiBench according to [build HiBench](build-hibench.md).
 
