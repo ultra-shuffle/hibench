@@ -34,8 +34,17 @@ function enter_bench(){		# declare the entrance of a workload
     shift 3
     patching_args=$@
     echo "patching args=$patching_args"
-    local CONF_FILE=`${workload_func_bin}/load_config.py ${HIBENCH_CONF_FOLDER} $workload_config_file $workload_folder $patching_args`
-    . $CONF_FILE
+    local CONF_FILE
+    if [[ -n "${patching_args}" ]]; then
+        CONF_FILE="$(${workload_func_bin}/load_config.py "${HIBENCH_CONF_FOLDER}" "${workload_config_file}" "${workload_folder}" "${patching_args}")" || exit $?
+    else
+        CONF_FILE="$(${workload_func_bin}/load_config.py "${HIBENCH_CONF_FOLDER}" "${workload_config_file}" "${workload_folder}")" || exit $?
+    fi
+    if [[ -z "${CONF_FILE}" || ! -f "${CONF_FILE}" ]]; then
+        echo -e "${BRed}ERROR${Color_Off}: load_config.py did not generate a config file (got: '${CONF_FILE:-<empty>}')." >&2
+        exit 1
+    fi
+    . "${CONF_FILE}"
 }
 
 function leave_bench(){		# declare the workload is finished

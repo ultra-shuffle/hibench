@@ -292,11 +292,36 @@ class BaseMonitor(object):
 
 class BashSSHClientMixin(object):
     ssh_lock = threading.Lock()
+
+    def _is_local_host(self, host):
+        if host in ("localhost", "127.0.0.1", "::1"):
+            return True
+        try:
+            if host == socket.gethostname() or host == socket.getfqdn():
+                return True
+        except Exception:
+            pass
+        return False
+
     def ssh_client(self, host, shell):
         with open(os.devnull, 'rb', 0) as DEVNULL:
             with BashSSHClientMixin.ssh_lock:
-                self.proc = subprocess.Popen(["ssh", host, shell], bufsize=1, 
-                                             stdin=DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                if self._is_local_host(host):
+                    self.proc = subprocess.Popen(["bash", "-c", shell], bufsize=0,
+                                                 stdin=DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+                else:
+                    ssh_opts = os.environ.get("HIBENCH_SSH_OPTS", "")
+                    ssh_cmd = [
+                        "ssh",
+                        "-o", "BatchMode=yes",
+                        "-o", "StrictHostKeyChecking=accept-new",
+                        "-o", "ConnectTimeout=5",
+                    ]
+                    if ssh_opts:
+                        ssh_cmd.extend(ssh_opts.split())
+                    ssh_cmd.extend([host, shell])
+                    self.proc = subprocess.Popen(ssh_cmd, bufsize=0,
+                                                 stdin=DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         return self.proc.stdout
 
     def ssh_close(self):

@@ -74,7 +74,8 @@ def show_with_progress_bar(line, progress, line_width):
     sys.stdout.write(line)
 
 def execute(workload_result_file, command_lines):
-    proc = subprocess.Popen(" ".join(command_lines), shell=True, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    # bufsize=1 triggers a RuntimeWarning in Python 3.x when stdout is binary (the default).
+    proc = subprocess.Popen(" ".join(command_lines), shell=True, bufsize=0, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     count = 100
     last_time=0
     log_file = open(workload_result_file, 'wb')

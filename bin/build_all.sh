@@ -20,4 +20,17 @@ DIR=`cd "${DIR}/.."; pwd`
 
 CURDIR=`pwd`
 cd $DIR
-mvn clean package
+
+MVN_BIN="${MVN:-}"
+if [ -z "${MVN_BIN}" ]; then
+  if command -v mvn >/dev/null 2>&1; then
+    MVN_BIN="mvn"
+  elif [ -n "${SPARK_HOME:-}" ] && [ -x "${SPARK_HOME}/build/mvn" ]; then
+    MVN_BIN="${SPARK_HOME}/build/mvn"
+  else
+    echo "ERROR: Maven not found. Install 'mvn' or set MVN=/path/to/mvn (or SPARK_HOME pointing at a Spark source tree with build/mvn)." >&2
+    exit 1
+  fi
+fi
+
+"${MVN_BIN}" clean package "$@"
