@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -17,7 +17,12 @@
 import threading, subprocess, re, os, sys, signal, socket
 from time import sleep, time
 from contextlib import closing
-import traceback, thread
+import traceback
+from functools import reduce
+try:
+    import _thread as thread
+except ImportError:  # pragma: no cover
+    import thread  # type: ignore
 from datetime import datetime
 from collections import namedtuple
 from pprint import pprint
@@ -72,6 +77,9 @@ class PatchedNameTuple(object):
     def __div__(self, other):
         return self.__class__(self[0], *[a/other for a in self[1:]])
 
+    def __truediv__(self, other):
+        return self.__class__(self[0], *[a/other for a in self[1:]])
+
     def _add(self, other, override_title=None):
         if other == None: return self
         assert isinstance(other, self.__class__)
@@ -84,53 +92,69 @@ def ident(size, s):
 
 class RemoteProc(threading.Thread):
     SEP="----SEP----"
-    template_debug=r"""exec('
+    template_debug=r"""exec('''
 import time, os, sys, socket, traceback
 socket.setdefaulttimeout(1)
+
 def log(*x, **kw):
- with open("/home/zhihui/probe.log", kw.get("mode","a")) as f:
-  f.write(repr(x)+chr(10))
+    with open("/home/zhihui/probe.log", kw.get("mode","a")) as f:
+        f.write(repr(x)+"\n")
+
 try:
- log("create socket", mode="w")
- s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
- log("bind socket")
- s.bind(("0.0.0.0",0))
- log("listen socket")
- s.listen(5)
- log("bind socket to:", s.getsockname())
- while True:
-  log("accepting")
-  try:
-   print s.getsockname()[1]
-   s2,peer=s.accept()
-   break
-  except socket.timeout:
-   log("accept timeout, retry")
- log("accepted, peer:",peer)
-except Exception as e:
- import traceback
- log(traceback.format_exc())
+    log("create socket", mode="w")
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    log("bind socket")
+    s.bind(("0.0.0.0", 0))
+    log("listen socket")
+    s.listen(5)
+    log("bind socket to:", s.getsockname())
+
+    while True:
+        log("accepting")
+        try:
+            print(s.getsockname()[1])
+            s2, peer = s.accept()
+            break
+        except socket.timeout:
+            log("accept timeout, retry")
+    log("accepted, peer:", peer)
+
+    def send_line(msg):
+        s2.send((str(msg) + "\n").encode("utf-8"))
+
+except Exception:
+    log(traceback.format_exc())
+    raise
+
 {func_template}
+
 while True:
-  s2.send(("{SEP}+%s" % time.time())+chr(10))
+    send_line("{SEP}+%s" % time.time())
 {call_template}
-  s2.send("{SEP}#end"+chr(10))
-  time.sleep({interval})
-')"""
-    template=r"""exec('
-import time, os, sys, socket, traceback
-s=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(("0.0.0.0",0))
+    send_line("{SEP}#end")
+    time.sleep({interval})
+''')"""
+
+    template=r"""exec('''
+import time, socket
+
+s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+s.bind(("0.0.0.0", 0))
 s.listen(5)
-print s.getsockname()[1]
-s2,peer=s.accept()
+print(s.getsockname()[1])
+s2, peer = s.accept()
+
+def send_line(msg):
+    s2.send((str(msg) + "\n").encode("utf-8"))
+
 {func_template}
+
 while True:
-  s2.send(("{SEP}+%s" % time.time())+chr(10))
+    send_line("{SEP}+%s" % time.time())
 {call_template}
-  s2.send("{SEP}#end"+chr(10))
-  time.sleep({interval})
-')"""
+    send_line("{SEP}#end")
+    time.sleep({interval})
+''')"""
 
     def __init__(self, host, interval=1):
         self.host = host
@@ -165,7 +189,7 @@ while True:
         s = script.replace('"', r'\"').replace("\n", r"\n")
         container=[]
 #        log("ssh client to:", self.host)
-        with self.ssh_client(self.host, "python -u -c \"{script}\"".format(script=s)) as f:
+        with self.ssh_client(self.host, "python3 -u -c \"{script}\"".format(script=s)) as f:
 #            log("ssh client %s connected" % self.host)
             try:
                 port_line = f.readline()
@@ -474,19 +498,21 @@ def filter_dict_with_prefixes(d, *prefixes):
 
 def test():
     p = BashSSHClientMixin()
-    script=r"""exec('
-import time, os, sys
-while 1:
-  with open("/proc/stat") as f: print f.read(),
-  print "---hello---"
-  time.sleep(1)
-')"""
+    script=r"""exec('''
+import time
+while True:
+    with open("/proc/stat") as f:
+        print(f.read(), end='')
+    print("---hello---")
+    time.sleep(1)
+''')"""
     s = script.replace('"', r'\"').replace("\n", r"\n")
-    with p.ssh_client("localhost", "python -u -c \"{s}\"".format(s=s)) as f:
-        while 1:
+    with p.ssh_client("localhost", "python3 -u -c \"{s}\"".format(s=s)) as f:
+        while True:
             l = f.readline()
-            print l.rstrip()
-            if not l: break
+            if not l:
+                break
+            print(l.rstrip())
     p.ssh_close()
 
 def test2():
@@ -631,7 +657,7 @@ def generate_report(workload_title, log_fn, benchlog_fn, report_fn):
         data_by_all_hosts = [classed_by_host.get(h, {}) for h in all_hosts]
 
         # all cpu cores, total cluster
-        summed1 = [x['cpu/total'] for x in data_by_all_hosts if x.has_key('cpu/total')]
+        summed1 = [x['cpu/total'] for x in data_by_all_hosts if 'cpu/total' in x]
         if summed1: 
             summed = reduce_patched(lambda a,b: a._add(b), summed1) / len(summed1)
             for x in data_by_all_hosts:
@@ -659,7 +685,7 @@ def generate_report(workload_title, log_fn, benchlog_fn, report_fn):
                                                host = x['hostname'], cpuid = y.label))
 
         # all disk of each node, total cluster
-        summed1=[x['disk/total'] for x in data_by_all_hosts if x.has_key('disk/total')]
+        summed1=[x['disk/total'] for x in data_by_all_hosts if 'disk/total' in x]
         if summed1:
             summed = reduce_patched(lambda a,b: a._add(b), summed1)
             for x in data_by_all_hosts:
@@ -693,7 +719,7 @@ def generate_report(workload_title, log_fn, benchlog_fn, report_fn):
                                                diskid = y.label))
 
         # memory of each node, total cluster
-        summed1 = [x['memory/total'] for x in data_by_all_hosts if x.has_key('memory/total')]
+        summed1 = [x['memory/total'] for x in data_by_all_hosts if 'memory/total' in x]
         if summed1:
             summed = reduce_patched(lambda a,b: a._add(b), summed1)
             for x in data_by_all_hosts:
@@ -725,7 +751,7 @@ def generate_report(workload_title, log_fn, benchlog_fn, report_fn):
 
 
         # proc of each node, total cluster
-        summed1 = [x['proc'] for x in data_by_all_hosts if x.has_key('proc')]
+        summed1 = [x['proc'] for x in data_by_all_hosts if 'proc' in x]
         if summed1: 
             summed = reduce_patched(lambda a,b: a._add(b), summed1)
             for x in data_by_all_hosts:
@@ -751,7 +777,7 @@ def generate_report(workload_title, log_fn, benchlog_fn, report_fn):
                                                     host = x['hostname']))
 
         # all network interface, total cluster
-        summed1 = [x['net/total'] for x in data_by_all_hosts if x.has_key('net/total')]
+        summed1 = [x['net/total'] for x in data_by_all_hosts if 'net/total' in x]
 
         if summed1: 
             summed = reduce_patched(lambda a,b: a._add(b), summed1)
@@ -838,7 +864,7 @@ if __name__=="__main__":
     nodes_to_monitor = sys.argv[6:]
     pid=os.fork()
     if pid:                               #parent
-        print pid
+        print(pid)
     else:                                 #child
         os.close(0)
         os.close(1)

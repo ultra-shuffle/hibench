@@ -1,9 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #coding: utf-8
 
 import sys, os, re
 from pprint import pprint
 from collections import defaultdict, namedtuple
+from functools import reduce
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -39,7 +40,7 @@ def group_by_type(datas):
 
 def report_plot(fn):
     if not os.path.isfile(fn):
-        print "Failed to find `sparkbench.report`"
+        print("Failed to find `sparkbench.report`")
         sys.exit(1)
 
     with open(fn) as f:
@@ -61,8 +62,8 @@ def report_plot(fn):
 
 def plot(groups, title="Seconds of durtations", ylabel="Seconds", value_field="durtation", fig_fn = "foo.png"):
     # plot it
-    keys = groups.keys()
-    languages = sorted(reduce(lambda x,y: x.union(y), [set([groups[x][y].language for y in groups[x]]) for x in groups]))
+    keys = list(groups.keys())
+    languages = sorted(reduce(lambda x,y: x.union(y), [set([groups[x][y].language for y in groups[x]]) for x in groups], set()))
     width = 0.15
     rects = []
 
@@ -78,7 +79,7 @@ def plot(groups, title="Seconds of durtations", ylabel="Seconds", value_field="d
     patterns = ('-', '+', 'x', '\\', '/', '*', '.', 'O')
     for idx, lang in enumerate(languages):
         rects.append(ax.bar([x + width * (idx + 1) for x in range(len(keys))], # x index
-                            [getattr(groups[x][lang], value_field) if x in groups and groups[x].has_key(lang) else 0 for x in keys], # value
+                            [getattr(groups[x][lang], value_field) if x in groups and lang in groups[x] else 0 for x in keys], # value
                             width,
                             color = colors[idx],
                             hatch = patterns[idx]
@@ -96,7 +97,7 @@ def plot(groups, title="Seconds of durtations", ylabel="Seconds", value_field="d
 
     x_axis_offset = len(languages)* width /2.0
     ax.set_xticks([(x + width + x_axis_offset) for x in range(len(keys))])
-    ax.set_xticklabels(["%s \n@%s" % (x, human_readable_size(groups[x].values()[0].data_size)) for x in keys])
+    ax.set_xticklabels(["%s \n@%s" % (x, human_readable_size(next(iter(groups[x].values())).data_size)) for x in keys])
     ax.grid(True)
 
     ax.legend([x[0] for x in rects],

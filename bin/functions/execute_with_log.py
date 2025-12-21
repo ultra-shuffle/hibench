@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
 # this work for additional information regarding copyright ownership.
@@ -77,7 +77,7 @@ def execute(workload_result_file, command_lines):
     proc = subprocess.Popen(" ".join(command_lines), shell=True, bufsize=1, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     count = 100
     last_time=0
-    log_file = open(workload_result_file, 'w')
+    log_file = open(workload_result_file, 'wb')
     # see http://stackoverflow.com/a/4417735/1442961
     lines_iterator = iter(proc.stdout.readline, b"")
     for line in lines_iterator:
@@ -88,16 +88,16 @@ def execute(workload_result_file, command_lines):
             width -= 1
 
         try:
-            line = line.rstrip()
-            log_file.write(line+"\n")
+            line = line.rstrip(b"\r\n")
+            log_file.write(line + b"\n")
             log_file.flush()
         except KeyboardInterrupt:
             proc.terminate()
             break
-        line = line.decode('utf-8')
-        line = replace_tab_to_space(line)
+        line_text = line.decode('utf-8', errors='replace')
+        line_text = replace_tab_to_space(line_text)
         #print "{Red}log=>{Color_Off}".format(**Color), line
-        lline = line.lower()
+        lline = line_text.lower()
 
         def table_not_found_in_log(line):
             table_not_found_pattern = "*Table * not found*"
@@ -127,18 +127,18 @@ def execute(workload_result_file, command_lines):
             bypass_error_condition = table_not_found_in_log or database_default_exist_in_log(lline) or uri_with_key_not_found_in_log(lline)
             if not bypass_error_condition:
                 COLOR = "Red"
-                sys.stdout.write((u"{%s}{line}{Color_Off}{ClearEnd}\n" % COLOR).format(line=line,**Color).encode('utf-8'))
+                sys.stdout.write(("{%s}{line}{Color_Off}{ClearEnd}\n" % COLOR).format(line=line_text, **Color))
             
         else:
-            if len(line) >= width:
-                line = line[:width-4]+'...'
+            if len(line_text) >= width:
+                line_text = line_text[:width-4]+'...'
             progress = matcher.match(lline)
             if progress is not None:
-                show_with_progress_bar(line, progress, width)
+                show_with_progress_bar(line_text, progress, width)
             else:
-                sys.stdout.write(u"{line}{ClearEnd}{ret}".format(line=line, **Color).encode('utf-8'))
+                sys.stdout.write("{line}{ClearEnd}{ret}".format(line=line_text, **Color))
         sys.stdout.flush()
-    print
+    print()
     log_file.close()
     try:
         proc.wait()

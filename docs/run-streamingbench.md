@@ -20,7 +20,7 @@ The streaming benchmark consists of the following parts:
 
 ### 1. Setup ###
 
- * Python 2.x(>=2.6) is required.
+ * Python 3.x is required.
  
  * Supported Hadoop version: Apache Hadoop 2.x, CDH5.x, HDP 
  

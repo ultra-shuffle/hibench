@@ -1,6 +1,6 @@
 ### 1. Setup ###
 
- * Python 2.x(>=2.6) is required.
+ * Python 3.x is required.
 
  * `bc` is required to generate the HiBench report.
 
