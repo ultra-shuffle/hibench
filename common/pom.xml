@@ -40,8 +40,8 @@
     </dependency>
     <dependency>
       <groupId>org.apache.kafka</groupId>
-      <artifactId>kafka_${scala.binary.version}</artifactId>
-      <version>0.8.2.1</version>
+      <artifactId>kafka-clients</artifactId>
+      <version>3.4.1</version>
     </dependency>
   </dependencies>
 
@@ -97,8 +97,8 @@
     <profile>
       <id>defaultScalaVersion</id>
       <properties>
-        <scala.version>2.11.8</scala.version>
-        <scala.binary.version>2.11</scala.binary.version>
+        <scala.version>2.13.8</scala.version>
+        <scala.binary.version>2.13</scala.binary.version>
       </properties>
       <activation>
         <property>
@@ -131,6 +131,34 @@
         <property>
           <name>scala</name>
           <value>2.11</value>
+        </property>
+      </activation>
+    </profile>
+
+    <profile>
+      <id>scala2.12</id>
+      <properties>
+        <scala.version>2.12.7</scala.version>
+        <scala.binary.version>2.12</scala.binary.version>
+      </properties>
+      <activation>
+        <property>
+          <name>scala</name>
+          <value>2.12</value>
+        </property>
+      </activation>
+    </profile>
+
+    <profile>
+      <id>scala2.13</id>
+      <properties>
+        <scala.version>2.13.8</scala.version>
+        <scala.binary.version>2.13</scala.binary.version>
+      </properties>
+      <activation>
+        <property>
+          <name>scala</name>
+          <value>2.13</value>
         </property>
       </activation>
     </profile>

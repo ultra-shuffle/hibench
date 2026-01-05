@@ -17,9 +17,12 @@
 package com.intel.hibench.common.streaming.metrics
 
 import com.intel.hibench.common.streaming.Platform
-import kafka.admin.AdminUtils
-import kafka.utils.ZKStringSerializer
-import org.I0Itec.zkclient.ZkClient
+
+import java.util.{Collections, Properties}
+import java.util.concurrent.ExecutionException
+
+import org.apache.kafka.clients.admin.{AdminClient, NewTopic}
+import org.apache.kafka.common.errors.TopicExistsException
 
 object MetricsUtil {
 
@@ -33,18 +36,17 @@ object MetricsUtil {
     topic
   }
 
-  def createTopic(zkConnect: String, topic: String, partitions: Int): Unit = {
-    val zkClient = new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer)
+  def createTopic(bootstrapServers: String, topic: String, partitions: Int): Unit = {
+    val props = new Properties()
+    props.put("bootstrap.servers", bootstrapServers)
+    val adminClient = AdminClient.create(props)
     try {
-      AdminUtils.createTopic(zkClient, topic, partitions, 1)
-      while (!AdminUtils.topicExists(zkClient, topic)) {
-        Thread.sleep(100)
-      }
+      val newTopic = new NewTopic(topic, partitions, 1.toShort)
+      adminClient.createTopics(Collections.singletonList(newTopic)).all().get()
     } catch {
-      case e: Exception =>
-        throw e
+      case e: ExecutionException if e.getCause.isInstanceOf[TopicExistsException] =>
     } finally {
-      zkClient.close()
+      adminClient.close()
     }
   }
 }

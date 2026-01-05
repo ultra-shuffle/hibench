@@ -54,8 +54,17 @@ object PCAExample {
     val test_pca = test.map(p => p.copy(features = pca.transform(p.features)))
 
     val numIterations = 100
-    val model = LinearRegressionWithSGD.train(training, numIterations)
-    val model_pca = LinearRegressionWithSGD.train(training_pca, numIterations)
+    def train(data: RDD[LabeledPoint]) =
+      {
+        val ctor = classOf[LinearRegressionWithSGD]
+          .getConstructor(classOf[Double], classOf[Int], classOf[Double], classOf[Double])
+        val algorithm = ctor.newInstance(1.0, numIterations, 0.0, 1.0)
+          .asInstanceOf[LinearRegressionWithSGD]
+        algorithm.setIntercept(true)
+        algorithm.run(data)
+      }
+    val model = train(training)
+    val model_pca = train(training_pca)
 
     val valuesAndPreds = test.map { point =>
       val score = model.predict(point.features)

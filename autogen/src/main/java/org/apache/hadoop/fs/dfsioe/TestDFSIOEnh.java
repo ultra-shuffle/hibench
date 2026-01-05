@@ -952,7 +952,7 @@ public class TestDFSIOEnh extends Configured implements Tool {
 			 e.printStackTrace();
 		 } finally {
 			 fs.delete(DfsioeConfig.getInstance().getReportTmp(fsConfig), true);
-			 FileUtil.copyMerge(fs, DfsioeConfig.getInstance().getReportDir(fsConfig), fs, DfsioeConfig.getInstance().getReportTmp(fsConfig), false, fsConfig, null);
+			 mergeReportFiles(fs, DfsioeConfig.getInstance().getReportDir(fsConfig), DfsioeConfig.getInstance().getReportTmp(fsConfig), fsConfig);
 			 LOG.info("remote report file " + DfsioeConfig.getInstance().getReportTmp(fsConfig) + " merged.");
 			 BufferedReader lines = new BufferedReader(new InputStreamReader(new DataInputStream(fs.open(DfsioeConfig.getInstance().getReportTmp(fsConfig)))));
 			 String line = null;
@@ -1001,6 +1001,52 @@ public class TestDFSIOEnh extends Configured implements Tool {
 		 }
 		 res.println("\n-- Result Analyse -- : " + ((System.currentTimeMillis() - t1)/1000) + "s");
 		 res.close();
+	 }
+
+	 private static void mergeReportFiles(FileSystem fs, Path srcDir, Path dstFile, Configuration conf) throws IOException {
+		 FileStatus[] statuses;
+		 try {
+			 statuses = fs.listStatus(srcDir);
+		 } catch (FileNotFoundException e) {
+			 return;
+		 }
+
+		 ArrayList<FileStatus> files = new ArrayList<FileStatus>();
+		 if (statuses != null) {
+			 for (FileStatus status : statuses) {
+				 String name = status.getPath().getName();
+				 if (status.isFile() && !name.startsWith("_") && !name.startsWith(".")) {
+					 files.add(status);
+				 }
+			 }
+		 }
+		 Collections.sort(files, new Comparator<FileStatus>() {
+			 @Override
+			 public int compare(FileStatus a, FileStatus b) {
+				 return a.getPath().getName().compareTo(b.getPath().getName());
+			 }
+		 });
+
+		 Path parent = dstFile.getParent();
+		 if (parent != null && !fs.exists(parent)) {
+			 fs.mkdirs(parent);
+		 }
+
+		 FSDataOutputStream out = null;
+		 try {
+			 out = fs.create(dstFile, true);
+			 for (FileStatus status : files) {
+				 FSDataInputStream in = null;
+				 try {
+					 in = fs.open(status.getPath());
+					 IOUtils.copyBytes(in, out, conf, false);
+				 } finally {
+					 IOUtils.closeStream(in);
+				 }
+			 }
+		 } finally {
+			 IOUtils.closeStream(out);
+		 }
 	 }
 	 
 	 @Deprecated
@@ -1140,5 +1186,4 @@ public class TestDFSIOEnh extends Configured implements Tool {
 	 }
 
 }//end 
-
 

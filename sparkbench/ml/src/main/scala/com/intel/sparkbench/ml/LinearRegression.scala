@@ -20,7 +20,6 @@ package com.intel.hibench.sparkbench.ml
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
-import org.apache.spark.mllib.regression.LinearRegressionModel
 import org.apache.spark.mllib.regression.LinearRegressionWithSGD
 import org.apache.spark.rdd.RDD
 
@@ -68,12 +67,17 @@ object LinearRegression {
     val data: RDD[LabeledPoint] = sc.objectFile(dataPath)
     
     // Building the model
-    val model = LinearRegressionWithSGD.train(data, numIterations, stepSize)
+    val ctor = classOf[LinearRegressionWithSGD]
+      .getConstructor(classOf[Double], classOf[Int], classOf[Double], classOf[Double])
+    val algorithm = ctor.newInstance(stepSize, numIterations, 0.0, 1.0)
+      .asInstanceOf[LinearRegressionWithSGD]
+    algorithm.setIntercept(true)
+    val model = algorithm.run(data)
 
     // Evaluate model on training examples and compute training error
     val valuesAndPreds = data.map { point =>
       val prediction = model.predict(point.features)
-        (point.label, prediction)
+      (point.label, prediction)
     }
     val MSE = valuesAndPreds.map{ case(v, p) => math.pow((v - p), 2) }.mean()
     println("Training Mean Squared Error = " + MSE)

@@ -20,15 +20,16 @@ package com.intel.hibench.common.streaming.metrics
 import java.io.{FileWriter, File}
 import java.util.Date
 import java.util.concurrent.{TimeUnit, Future, Executors}
+import java.util.{Collections, Properties}
 
 import com.codahale.metrics.{UniformReservoir, Histogram}
-import kafka.utils.{ZKStringSerializer, ZkUtils}
-import org.I0Itec.zkclient.ZkClient
+import org.apache.kafka.clients.admin.AdminClient
 
+import scala.collection.JavaConverters._
 import scala.collection.mutable.ArrayBuffer
 
 
-class KafkaCollector(zkConnect: String, metricsTopic: String,
+class KafkaCollector(bootstrapServers: String, metricsTopic: String,
     outputDir: String, sampleNumber: Int, desiredThreadNum: Int) extends LatencyCollector {
 
   private val histogram = new Histogram(new UniformReservoir(sampleNumber))
@@ -36,12 +37,12 @@ class KafkaCollector(zkConnect: String, metricsTopic: String,
   private val fetchResults = ArrayBuffer.empty[Future[FetchJobResult]]
 
   def start(): Unit = {
-    val partitions = getPartitions(metricsTopic, zkConnect)
+    val partitions = getPartitions(metricsTopic, bootstrapServers)
 
     println("Starting MetricsReader for kafka topic: " + metricsTopic)
 
     partitions.foreach(partition => {
-      val job = new FetchJob(zkConnect, metricsTopic, partition, histogram)
+      val job = new FetchJob(bootstrapServers, metricsTopic, partition, histogram)
       val fetchFeature = threadPool.submit(job)
       fetchResults += fetchFeature
     })
@@ -59,12 +60,15 @@ class KafkaCollector(zkConnect: String, metricsTopic: String,
     report(finalResults.minTime, finalResults.maxTime, finalResults.count)
   }
 
-  private def getPartitions(topic: String, zkConnect: String): Seq[Int] = {
-    val zkClient = new ZkClient(zkConnect, 6000, 6000, ZKStringSerializer)
+  private def getPartitions(topic: String, bootstrapServers: String): Seq[Int] = {
+    val props = new Properties()
+    props.put("bootstrap.servers", bootstrapServers)
+    val adminClient = AdminClient.create(props)
     try {
-      ZkUtils.getPartitionsForTopics(zkClient, Seq(topic)).flatMap(_._2).toSeq
+      val topics = adminClient.describeTopics(Collections.singletonList(topic)).all().get()
+      topics.get(topic).partitions().asScala.map(_.partition()).toSeq
     } finally {
-      zkClient.close()
+      adminClient.close()
     }
   }
 
@@ -110,5 +114,4 @@ class KafkaCollector(zkConnect: String, metricsTopic: String,
   }
 
 }
-
 

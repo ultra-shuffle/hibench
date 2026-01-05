@@ -21,10 +21,7 @@ import com.intel.hibench.sparkbench.common.IOCommon
 
 import scala.util.Random
 
-import com.github.fommil.netlib.BLAS.{getInstance => blas}
-
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.annotation.{DeveloperApi, Since}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
@@ -57,7 +54,13 @@ object SVMDataGenerator {
        val x = Array.fill[Double](nfeatures) {
          rnd.nextDouble() * 2.0 - 1.0
        }
-       val yD = blas.ddot(trueWeights.length, x, 1, trueWeights, 1) + rnd.nextGaussian() * 0.1
+       var dot = 0.0
+       var i = 0
+       while (i < trueWeights.length) {
+         dot += x(i) * trueWeights(i)
+         i += 1
+       }
+       val yD = dot + rnd.nextGaussian() * 0.1
        val y = if (yD < 0) 0.0 else 1.0
        LabeledPoint(y, Vectors.dense(x))
      }

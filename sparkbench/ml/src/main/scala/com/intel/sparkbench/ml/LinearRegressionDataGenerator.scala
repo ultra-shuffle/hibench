@@ -22,8 +22,6 @@ import com.intel.hibench.sparkbench.common.IOCommon
 import scala.util.Random
 
 import org.apache.spark.{SparkConf, SparkContext}
-import org.apache.spark.annotation.{DeveloperApi, Since}
-import com.github.fommil.netlib.BLAS.{getInstance => blas}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.rdd.RDD
@@ -67,7 +65,14 @@ object LinearRegressionDataGenerator {
 
         part.map{ _ =>
           val features = Vectors.dense(weights.indices.map{rndElement(_)}.toArray)
-          val label = blas.ddot(weights.length, weights, 1, features.toArray ,1) + eps * rnd.nextGaussian()
+          val featureArray = features.toArray
+          var dot = 0.0
+          var i = 0
+          while (i < weights.length) {
+            dot += weights(i) * featureArray(i)
+            i += 1
+          }
+          val label = dot + eps * rnd.nextGaussian()
           LabeledPoint(label, features)
         }
       }

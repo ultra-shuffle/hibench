@@ -63,7 +63,7 @@ object RunBench {
     val reporterTopic = MetricsUtil.getTopic(Platform.SPARK, topic, producerNum, recordPerInterval, intervalSpan)
     println("Reporter Topic: " + reporterTopic)
     val reporterTopicPartitions = conf.getProperty(StreamBenchConfig.KAFKA_TOPIC_PARTITIONS).toInt
-    MetricsUtil.createTopic(zkHost, reporterTopic, reporterTopicPartitions)
+    MetricsUtil.createTopic(brokerList, reporterTopic, reporterTopicPartitions)
 
     val probability = conf.getProperty(StreamBenchConfig.SAMPLE_PROBABILITY).toDouble
     // init SparkBenchConfig, it will be passed into every test case
